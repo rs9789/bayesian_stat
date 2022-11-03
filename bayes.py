@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 from functools import reduce
 import random
 from scipy.stats import gaussian_kde
+from rpy2.robjects.packages import importr
+
+base = importr('base')
+learnbayes = importr('LearnBayes')
 
 
 class Distribuition:
@@ -50,15 +54,27 @@ class Distribuition:
         try:
             dens = gaussian_kde(self.__sample)
             y = dens(self.__x)
+            y_total = y.sum()
+            norm = y/y_total
             self.__density = y
+            self.__normalized = norm
         except:
-            print('Run beta_mix_sim() first')
+            print('Run beta_mix_sim() first')  
     
-    def normalize(self):
-        total = self.__density.sum()
-        norm = self.__density/total
-        self.__normalized = norm
-          
+    @staticmethod
+    def binomial_beta_mix_post(experim_params, n, success):
+        probs = base.c(float(experim_params[0][0]),float(experim_params[1][0]))
+        beta_par1 = base.c(float(experim_params[0][1]), float(experim_params[0][2]))
+        beta_par2 = base.c(float(experim_params[1][1]), float(experim_params[1][2]))
+        betapar = base.rbind(beta_par1, beta_par2)
+        data = base.c(success, n-success)
+        post = learnbayes.binomial_beta_mix(probs, betapar, data)
+        
+        post_probs = np.array(post[0]).round(4)
+        post_betapar = np.array(post[1]).round(4)
+        
+        return post_probs, post_betapar
+        
     @property
     def beta_mix(self):
         return self.__sample
